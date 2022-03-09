@@ -4,7 +4,6 @@ ARG TARGETPLATFORM
 ARG TARGETARCH
 ARG TARGETOS
 
-#ENV GO111MODULE=on
 WORKDIR /go/src/github.com/wish/pod-netstat-exporter
 
 # Cache dependencies
