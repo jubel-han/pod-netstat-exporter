@@ -1,16 +1,16 @@
-FROM --platform=$BUILDPLATFORM golang:1.14
+FROM golang:1.17
 
-ARG BUILDPLATFORM
+ARG TARGETPLATFORM
 ARG TARGETARCH
 ARG TARGETOS
 
-ENV GO111MODULE=on
+#ENV GO111MODULE=on
 WORKDIR /go/src/github.com/wish/pod-netstat-exporter
 
 # Cache dependencies
 COPY go.mod .
 COPY go.sum .
-RUN go mod download
+RUN go mod download -x
 
 COPY . /go/src/github.com/wish/pod-netstat-exporter/
 
@@ -18,5 +18,6 @@ RUN CGO_ENABLED=0 GOARCH=${TARGETARCH} GOOS=${TARGETOS} go build -o ./pod-netsta
 
 FROM alpine:3.11
 RUN apk --no-cache add ca-certificates
-WORKDIR /root/
-COPY --from=0 /go/src/github.com/wish/pod-netstat-exporter/pod-netstat-exporter /root/pod-netstat-exporter
+WORKDIR /
+COPY --from=0 /go/src/github.com/wish/pod-netstat-exporter/pod-netstat-exporter /pod-netstat-exporter
+CMD /pod-netstat-exporter

@@ -8,11 +8,12 @@ import (
 
 	k8sApi "k8s.io/api/core/v1"
 	"k8s.io/client-go/rest"
+	"github.com/sirupsen/logrus"
 )
 
 // ClientConfig holds the config options for connecting to the kubelet API
 type ClientConfig struct {
-	APIEndpoint        string `long:"kubelet-api" env:"KUBELET_API" description:"kubelet API endpoint" default:"http://localhost:10250/pods"`
+	APIEndpoint        string `long:"kubelet-api" env:"KUBELET_API" description:"kubelet API endpoint" default:"https://localhost:10250/pods"`
 	InsecureSkipVerify bool   `long:"kubelet-api-insecure-skip-verify" env:"KUBELET_API_INSECURE_SKIP_VERIFY" description:"skip verification of TLS certificate from kubelet API"`
 }
 
@@ -54,11 +55,13 @@ type Client struct {
 func (k *Client) GetPodList() (*k8sApi.PodList, error) {
 	// k8s testing
 	req, err := http.NewRequest("GET", k.c.APIEndpoint, nil)
+	logrus.Tracef("http request %v, error: %v", req, err)
 	if err != nil {
 		return nil, err
 	}
 
 	resp, err := k.client.Do(req)
+	logrus.Tracef("http response %v, error: %v", resp, err)
 	if err != nil {
 		return nil, err
 	}
@@ -66,10 +69,13 @@ func (k *Client) GetPodList() (*k8sApi.PodList, error) {
 
 	var podList k8sApi.PodList
 	b, err := ioutil.ReadAll(resp.Body)
+	logrus.Tracef("pod list resp body %v, error: %v", b, err)
 	if err != nil {
 		return nil, err
 	}
+
 	if err := json.Unmarshal(b, &podList); err != nil {
+		logrus.Tracef("pod list json object error: %v", err)
 		return nil, err
 	}
 	return &podList, nil

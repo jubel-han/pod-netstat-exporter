@@ -13,7 +13,7 @@ import (
 	"golang.org/x/time/rate"
 	core_v1 "k8s.io/api/core/v1"
 
-	"github.com/wish/pod-netstat-exporter/pkg/docker"
+	"github.com/wish/pod-netstat-exporter/pkg/cri"
 	"github.com/wish/pod-netstat-exporter/pkg/kubelet"
 	"github.com/wish/pod-netstat-exporter/pkg/metrics"
 	"github.com/wish/pod-netstat-exporter/pkg/netstat"
@@ -23,7 +23,7 @@ type ops struct {
 	kubelet.ClientConfig
 	LogLevel      string  `long:"log-level" env:"LOG_LEVEL" description:"Log level" default:"info"`
 	RateLimit     float64 `long:"rate-limit" env:"RATE_LIMIT" description:"The number of /metrics requests served per second" default:"3"`
-	BindAddr      string  `long:"bind-address" short:"p" env:"BIND_ADDRESS" default:":9657" description:"address for binding metrics listener"`
+	BindAddr      string  `long:"bind-address" short:"p" env:"BIND_ADDRESS" default:":8080" description:"address for binding metrics listener"`
 	HostMountPath string  `long:"host-mount-path" env:"HOST_MOUNT_PATH" default:"/host" description:"The path where the host filesystem is mounted"`
 }
 
@@ -50,7 +50,7 @@ func getPodNetstats(opts *ops, pod *core_v1.Pod) (*netstat.NetStats, error) {
 		return nil, fmt.Errorf("No containers in pod")
 	}
 	container := pod.Status.ContainerStatuses[0].ContainerID
-	pid, err := docker.ContainerToPID(opts.HostMountPath, container)
+	pid, err := cri.ContainerToPID(opts.HostMountPath, container)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting pid for container %v: %v", container, err)
 	}
@@ -110,10 +110,7 @@ func main() {
 	srv := &http.Server{
 		Addr: opts.BindAddr,
 	}
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprintf(w, "OK\n")
-	})
-	http.HandleFunc("/healthcheck", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "OK\n")
 	})
 
