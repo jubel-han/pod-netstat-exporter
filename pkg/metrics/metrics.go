@@ -24,6 +24,12 @@ type PodStats struct {
 	Namespace string
 }
 
+type NodeMeta struct {
+	Name   string
+	Region string
+	Zone   string
+}
+
 func s(s string) *string {
 	return &s
 }
@@ -34,7 +40,7 @@ func f(i int64) *float64 {
 }
 
 // generateMetrics creates the actual prometheus metrics from the raw pod stats
-func generateMetrics(stats []*PodStats) []*dto.MetricFamily {
+func generateMetrics(stats []*PodStats, meta *NodeMeta) []*dto.MetricFamily {
 	timeMs := time.Now().Unix() * int64(time.Second/time.Millisecond)
 	generateGaugeFamily := func(name, help string) *dto.MetricFamily {
 		g := dto.MetricType_GAUGE
@@ -61,6 +67,9 @@ func generateMetrics(stats []*PodStats) []*dto.MetricFamily {
 				Label: []*dto.LabelPair{
 					&dto.LabelPair{Name: s("pod_namespace"), Value: &podStat.Namespace},
 					&dto.LabelPair{Name: s("pod_name"), Value: &podStat.Name},
+					&dto.LabelPair{Name: s("pod_node_name"), Value: &meta.Name},
+					&dto.LabelPair{Name: s("pod_node_region"), Value: &meta.Region},
+					&dto.LabelPair{Name: s("pod_node_zone"), Value: &meta.Zone},
 				},
 				Gauge:       &dto.Gauge{Value: f(metricValue)},
 				TimestampMs: &timeMs,
@@ -68,7 +77,7 @@ func generateMetrics(stats []*PodStats) []*dto.MetricFamily {
 		}
 	}
 
-	ret := []*dto.MetricFamily{}
+	var ret []*dto.MetricFamily
 	for _, metric := range families {
 		ret = append(ret, metric)
 	}
@@ -76,10 +85,10 @@ func generateMetrics(stats []*PodStats) []*dto.MetricFamily {
 }
 
 // Handler returns metrics in response to an HTTP request
-func Handler(rsp http.ResponseWriter, req *http.Request, stats []*PodStats) {
+func Handler(rsp http.ResponseWriter, req *http.Request, stats []*PodStats, meta *NodeMeta) {
 	logrus.Trace("Serving prometheus metrics")
 
-	metrics := generateMetrics(stats)
+	metrics := generateMetrics(stats, meta)
 
 	contentType := expfmt.Negotiate(req.Header)
 	header := rsp.Header()
@@ -92,7 +101,7 @@ func Handler(rsp http.ResponseWriter, req *http.Request, stats []*PodStats) {
 		if err := enc.Encode(mf); err != nil {
 			lastErr = err
 			HTTPError(rsp, err)
-			return
+			break
 		}
 	}
 

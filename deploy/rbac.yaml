@@ -1,6 +1,7 @@
 ---
 apiVersion: v1
 kind: ServiceAccount
+automountServiceAccountToken: true
 metadata:
   name: pod-netstat-exporter
   namespace: monitoring
@@ -15,17 +16,8 @@ rules:
   - apiGroups:
       - ""
     resources:
-      - pods
-    verbs:
-      - delete
-      - list
-      - watch
-  - apiGroups:
-      - ""
-    resources:
       - nodes
       - nodes/proxy
-      - nodes/status
     verbs:
       - get
       - list

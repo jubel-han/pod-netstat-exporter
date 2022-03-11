@@ -16,7 +16,6 @@ spec:
         app: pod-netstat-exporter
     spec:
       serviceAccountName: pod-netstat-exporter
-      hostNetwork: true
       tolerations:
       - key: 'node-role.kubernetes.io/master'
         effect: 'NoSchedule'
@@ -28,9 +27,13 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: LOG_LEVEL
-          value: INFO
+          value: TRACE
         - name: KUBELET_API_INSECURE_SKIP_VERIFY
           value: "true"
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         ports:
         - name: metrics
           containerPort: 8080
