@@ -3,6 +3,7 @@ package cri
 import (
 	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -40,23 +41,18 @@ func getPidForContainer(hostMountPath, id string) (int, error) {
 	for _, attempt := range attempts {
 		logrus.Tracef("looking for the pid with attempt %v", attempt)
 
-		filenames, _ := filepath.Glob(attempt)
-		if len(filenames) > 1 {
-			return pid, fmt.Errorf("ambiguous id supplied: %v", filenames)
-		} else if len(filenames) == 1 {
-			filename = filenames[0]
+		if _, err := os.Stat(attempt); err == nil {
+			filename = attempt
 			logrus.Tracef("found the file name: %v", filename)
-
 			break
 		}
 	}
 
-	logrus.Tracef("Looking for container %v pid in %v", id, filename)
-
 	if filename == "" {
-		return pid, fmt.Errorf("Unable to find container: %v", id[:len(id)-1])
+		return pid, fmt.Errorf("unable to find container: %v", id)
 	}
 
+	logrus.Tracef("looking for container %v pid in %v", id, filename)
 	output, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return pid, err
@@ -64,12 +60,12 @@ func getPidForContainer(hostMountPath, id string) (int, error) {
 
 	result := strings.Split(string(output), "\n")
 	if len(result) == 0 || len(result[0]) == 0 {
-		return pid, fmt.Errorf("No pid found for container")
+		return pid, fmt.Errorf("no pid found for container")
 	}
 
 	pid, err = strconv.Atoi(result[0])
 	if err != nil {
-		return pid, fmt.Errorf("Invalid pid '%s': %s", result[0], err)
+		return pid, fmt.Errorf("invalid pid '%s': %s", result[0], err)
 	}
 
 	return pid, nil

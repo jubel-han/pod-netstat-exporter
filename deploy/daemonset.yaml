@@ -3,17 +3,17 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   labels:
-    app: pod-netstat-exporter
+    app.kubernetes.io/name: pod-netstat-exporter
   name: pod-netstat-exporter
   namespace: monitoring
 spec:
   selector:
     matchLabels:
-      app: pod-netstat-exporter
+      app.kubernetes.io/name: pod-netstat-exporter
   template:
     metadata:
       labels:
-        app: pod-netstat-exporter
+        app.kubernetes.io/name: pod-netstat-exporter
     spec:
       serviceAccountName: pod-netstat-exporter
       tolerations:
@@ -23,13 +23,13 @@ spec:
         operator: 'Exists'
       containers:
       - name: pod-netstat-exporter
-        image: jubel-han/netstat-exporter:master
+        image: ghcr.io/jubel-han/pod-netstat-exporter:master
         imagePullPolicy: IfNotPresent
         env:
         - name: LOG_LEVEL
-          value: TRACE
+          value: INFO
         - name: KUBELET_API_INSECURE_SKIP_VERIFY
-          value: "true"
+          value: "TRUE"
         - name: NODE_NAME
           valueFrom:
             fieldRef:

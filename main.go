@@ -42,8 +42,8 @@ func setupLogging(logLevel string) {
 	logrus.SetFormatter(formatter)
 }
 
-func getNodeMeta(opts *Options, k *kubelet.Client) (*metrics.NodeMeta, error) {
-	node, err := k.GetNode()
+func getNodeMeta(opts *Options, client *kubelet.Client) (*metrics.NodeMeta, error) {
+	node, err := client.GetNode()
 	if err != nil {
 		logrus.Error("get node %v failed", opts.NodeName)
 		return nil, err
@@ -65,21 +65,35 @@ func getNodeMeta(opts *Options, k *kubelet.Client) (*metrics.NodeMeta, error) {
 	return meta, nil
 }
 
+func getPodContainerID(pod *corev1.Pod) (string, error) {
+	// TODO: get the id of the init container which is in running
+	if len(pod.Status.ContainerStatuses) == 0 {
+		return "", fmt.Errorf("no containers in pod %v", pod.Name)
+	}
+	container := pod.Status.ContainerStatuses[0]
+	if container.ContainerID == "" {
+		return "", fmt.Errorf("no container id in pod %v, container %v, ready %v",
+			pod.Name, container.Name, container.Ready)
+	}
+	return container.ContainerID, nil
+}
+
 // All containers in a pod share the same netns, so get the PID and then the statistics
 // from the first pod
 func getPodNetstats(opts *Options, pod *corev1.Pod) (*netstat.NetStats, error) {
 	logrus.Tracef("Getting stats for pod %v", pod.Name)
-	if len(pod.Status.ContainerStatuses) == 0 {
-		return nil, fmt.Errorf("no containers in pod")
-	}
 
-	container := pod.Status.ContainerStatuses[0].ContainerID
-	pid, err := cri.ContainerToPID(opts.HostMountPath, container)
+	containerID, err := getPodContainerID(pod)
 	if err != nil {
-		return nil, fmt.Errorf("error getting pid for container %v: %v", container, err)
+		return nil, fmt.Errorf("getting container id failed for pod %v, %v", pod.Name, err)
 	}
 
-	logrus.Tracef("Container %v of pod %v has PID %v", container, pod.Name, pid)
+	pid, err := cri.ContainerToPID(opts.HostMountPath, containerID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting pid for container %v: %v", containerID, err)
+	}
+
+	logrus.Tracef("Container %v of pod %v has PID %v", containerID, pod.Name, pid)
 	stats, err := netstat.GetStats(opts.HostMountPath, pid)
 	return &stats, err
 }

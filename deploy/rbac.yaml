@@ -6,12 +6,14 @@ metadata:
   name: pod-netstat-exporter
   namespace: monitoring
   labels:
-    app: pod-netstat-exporter
+    app.kubernetes.io/name: pod-netstat-exporter
 ---
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: pod-netstat-exporter
+  labels:
+    app.kubernetes.io/name: pod-netstat-exporter
 rules:
   - apiGroups:
       - ""
@@ -27,6 +29,8 @@ kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: pod-netstat-exporter
+  labels:
+    app.kubernetes.io/name: pod-netstat-exporter
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole

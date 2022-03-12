@@ -26,7 +26,7 @@ const (
 // ClientConfig holds the config options for connecting to the kubelet API
 type ClientConfig struct {
 	KubeletAPIPort     int    `long:"kubelet-api-port" env:"KUBELET_API_PORT" description:"kubelet API listening port" default:"10250"`
-	KubeletAPIHost     string `long:"kubelet-api" env:"KUBELET_API_HOST" description:"kubelet API hostname" default:"localhost"`
+	KubeletAPIHost     string `long:"kubelet-api-host" env:"KUBELET_API_HOST" description:"kubelet API hostname" default:"localhost"`
 	InsecureSkipVerify bool   `long:"kubelet-api-insecure-skip-verify" env:"KUBELET_API_INSECURE_SKIP_VERIFY" description:"skip verification of TLS certificate from kubelet API"`
 	NodeName           string `long:"node-name" env:"NODE_NAME" description:"node name of the exporter pod self running on."`
 }
