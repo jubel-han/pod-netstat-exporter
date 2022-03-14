@@ -76,25 +76,10 @@ func IsPodHealthy(pod *corev1.Pod) bool {
 		return false
 	}
 	if pod.Status.Phase != "Running" {
-		logrus.Tracef("container %v is not ready in pod %v", container.Name, pod.Name)
+		logrus.Tracef("pod %v is not in running", pod.Name)
 		return false
 	}
 	return true
-}
-
-func getPodContainerID(pod *corev1.Pod) (string, error) {
-	// TODO: get the id of the init container which is in running
-	if len(pod.Status.ContainerStatuses) == 0 {
-		return "", fmt.Errorf("no containers in pod %v", pod.Name)
-	}
-	container := pod.Status.ContainerStatuses[0]
-	if !container.Ready {
-		return "", fmt.Errorf("container %v is not ready in pod %v", container.Name, pod.Name)
-	}
-	if container.ContainerID == "" {
-		return "", fmt.Errorf("container %v has no id in pod %v", container.Name, pod.Name)
-	}
-	return container.ContainerID, nil
 }
 
 // All containers in a pod share the same netns, so get the PID and then the statistics
