@@ -65,15 +65,34 @@ func getNodeMeta(opts *Options, client *kubelet.Client) (*metrics.NodeMeta, erro
 	return meta, nil
 }
 
+func IsPodHealthy(pod *corev1.Pod) bool {
+	if len(pod.Status.ContainerStatuses) == 0 {
+		logrus.Tracef("no containers in pod %v", pod.Name)
+		return false
+	}
+	container := pod.Status.ContainerStatuses[0]
+	if !container.Ready {
+		logrus.Tracef("container %v is not ready in pod %v", container.Name, pod.Name)
+		return false
+	}
+	if pod.Status.Phase != "Running" {
+		logrus.Tracef("container %v is not ready in pod %v", container.Name, pod.Name)
+		return false
+	}
+	return true
+}
+
 func getPodContainerID(pod *corev1.Pod) (string, error) {
 	// TODO: get the id of the init container which is in running
 	if len(pod.Status.ContainerStatuses) == 0 {
 		return "", fmt.Errorf("no containers in pod %v", pod.Name)
 	}
 	container := pod.Status.ContainerStatuses[0]
+	if !container.Ready {
+		return "", fmt.Errorf("container %v is not ready in pod %v", container.Name, pod.Name)
+	}
 	if container.ContainerID == "" {
-		return "", fmt.Errorf("no container id in pod %v, container %v, ready %v",
-			pod.Name, container.Name, container.Ready)
+		return "", fmt.Errorf("container %v has no id in pod %v", container.Name, pod.Name)
 	}
 	return container.ContainerID, nil
 }
@@ -83,9 +102,9 @@ func getPodContainerID(pod *corev1.Pod) (string, error) {
 func getPodNetstats(opts *Options, pod *corev1.Pod) (*netstat.NetStats, error) {
 	logrus.Tracef("Getting stats for pod %v", pod.Name)
 
-	containerID, err := getPodContainerID(pod)
-	if err != nil {
-		return nil, fmt.Errorf("getting container id failed for pod %v, %v", pod.Name, err)
+	containerID := pod.Status.ContainerStatuses[0].ContainerID
+	if containerID == "" {
+		return nil, fmt.Errorf("container has no id in pod %v", pod.Name)
 	}
 
 	pid, err := cri.ContainerToPID(opts.HostMountPath, containerID)
@@ -110,6 +129,10 @@ func collectAllPodStats(opts *Options, client *kubelet.Client) ([]*metrics.PodSt
 	for _, pod := range pods.Items {
 		if pod.Spec.HostNetwork {
 			logrus.Tracef("Pod %v has hostNetwork: true, cannot fetch per-pod network metrics", pod.Name)
+			continue
+		}
+		if !IsPodHealthy(&pod) {
+			logrus.Tracef("skipped the unhealthy pod %v", pod.Name)
 			continue
 		}
 
